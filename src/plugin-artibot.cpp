@@ -158,6 +158,10 @@ static str extract_reply_text(const str& html, const str& nick)
 	if(pos != str::npos)
 		reply.replace(pos, 17, nick);
 
+	pos = reply.find("Chat girl");
+	if(pos != str::npos)
+		reply.replace(pos, 9, nick);
+
 	//bug("reply: " << reply);
 	return reply;
 }
