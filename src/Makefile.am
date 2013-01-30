@@ -50,7 +50,7 @@ plugin_library_LTLIBRARIES =  \
 	skivvy-plugin-artibot.la
 
 # IrcBot plugins
-skivvy_plugin_artibot_la_SOURCES = plugin-artibot.cpp
+skivvy_plugin_artibot_la_SOURCES = plugin-artibot.cpp mh/megahal.cpp
 skivvy_plugin_artibot_la_LDFLAGS = -module
 
 plugin_manuals_DATA = $(top_srcdir)/docs/artibot-manual.text

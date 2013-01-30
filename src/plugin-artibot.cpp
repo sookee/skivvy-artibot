@@ -28,7 +28,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 '-----------------------------------------------------------------*/
 
-#include <skivvy/plugin-artibot.h>
+#include <skivvy-artibot/plugin-artibot.h>
 
 #include "mh/megahal.h"
 
@@ -43,7 +43,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <skivvy/stl.h>
 #include <skivvy/str.h>
 
-namespace skivvy { namespace ircbot {
+namespace skivvy { namespace artibot {
 
 PLUGIN_INFO("artibot", "Artibot AI", "0.1");
 IRC_BOT_PLUGIN(ArtibotIrcBotPlugin);
@@ -51,6 +51,7 @@ IRC_BOT_PLUGIN(ArtibotIrcBotPlugin);
 using namespace skivvy;
 using namespace skivvy::types;
 using namespace skivvy::utils;
+using namespace skivvy::ircbot;
 using namespace skivvy::string;
 
 const str AI = "artibot.ai";
@@ -722,4 +723,4 @@ void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& channel)
 	}
 }
 
-}} // sookee::ircbot
+}} // sookee::artibot

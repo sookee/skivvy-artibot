@@ -39,9 +39,11 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <mutex>
 #include <future>
 
-namespace skivvy { namespace ircbot {
+namespace skivvy { namespace artibot {
 
-class ArtibotIrcBotPlugin _final_
+using namespace skivvy::ircbot;
+
+class ArtibotIrcBotPlugin
 : public BasicIrcBotPlugin
 , public IrcBotMonitor
 {
@@ -98,6 +100,6 @@ public:
 	virtual void event(const message& msg);
 };
 
-}} // sookee::ircbot
+}} // sookee::artibot
 
 #endif // _SOOKEE_IRCBOT_ARTIBOT_H_
