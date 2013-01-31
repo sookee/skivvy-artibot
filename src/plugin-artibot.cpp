@@ -28,7 +28,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 '-----------------------------------------------------------------*/
 
-#include <skivvy-artibot/plugin-artibot.h>
+#include <skivvy/plugin-artibot.h>
 
 #include "mh/megahal.h"
 
