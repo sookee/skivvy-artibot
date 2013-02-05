@@ -502,7 +502,8 @@ bool ArtibotIrcBotPlugin::initialize()
 	while(std::getline(ifs, user) && ifs >> times >> std::ws)
 	{
 		offender_map[user] = times;
-		if(offender_map[user] > 3) offends.push_back(user);
+		if(times > 3)
+			offends.push_back(user);
 	}
 
 	if(bot.get(AI) == AI_MEGAHAL)
@@ -526,28 +527,28 @@ bool ArtibotIrcBotPlugin::initialize()
 		if(!get(io))
 		{
 			log("ERROR getting data.");
-			return false;
+			return true;
 		}
 
 		net::header_map headers;
 		if(!net::read_http_headers(io, headers))
 		{
 			log("ERROR reading headers.");
-			return false;
+			return true;
 		}
 
 		cookies.clear();
 		if(!net::read_http_cookies(io, headers, cookies))
 		{
 			log("ERROR reading cookies.");
-			return false;
+			return true;
 		}
 
 		str html;
 		if(!net::read_http_response_data(io, headers, html))
 		{
 			log("ERROR reading response data.");
-			return false;
+			return true;
 		}
 
 		formdata = extract_form_data(html);
@@ -555,6 +556,7 @@ bool ArtibotIrcBotPlugin::initialize()
 
 	bot.add_monitor(*this);
 
+// TODO: Fix autoreading
 	if(bot.get(AI) == AI_MEGAHAL && !bot.get(AUTOREAD).empty())
 		reader_func = std::async(std::launch::async, [&]{ reader(); });
 
@@ -598,6 +600,8 @@ void ArtibotIrcBotPlugin::exit()
 
 void ArtibotIrcBotPlugin::event(const message& msg)
 {
+	BUG_COMMAND(msg);
+
 	if(msg.cmd != "PRIVMSG")
 		return;
 
@@ -643,7 +647,6 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 					allow_action = false;
 					break;
 				}
-
 
 		str_set acts;
 		lock_guard lock(random_acts_mtx);
@@ -691,38 +694,39 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 	}
 }
 
-void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& channel)
+void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& chan)
 {
 	bug_func();
 	bug_var(action);
-	bug_var(channel);
-	str_vec chans(bot.chans.cbegin(), bot.chans.cend());
+	bug_var(chan);
+//	str_vec chans(bot.chans.cbegin(), bot.chans.cend());
 
 //	if(!acts.empty()/* && rand_int(0, 1)*/)
 	{
-		str_vec nicks;
-		for(const str& nick: bot.nicks[channel])
-			if(nick != bot.nick)
-				nicks.push_back(nick);
+		str_vec nicks(bot.nicks[chan].begin(), bot.nicks[chan].end());
 
 		if(!nicks.empty()) // TODO PM has no nicks what to  do abotu wildcards?
-			for(size_t pos = 0; (pos = action.find("*", pos)) != str::npos; ++pos)
-				if(!(pos && action[pos - 1] == '\\'))
-				{
-					size_t n = rand_int(0, nicks.size() - 1);
-					action.replace(pos, 1, nicks[n]);
-					nicks.erase(nicks.begin() + n);
-					if(nicks.empty())
-						nicks.assign(bot.nicks[channel].cbegin(), bot.nicks[channel].cend());
-				}
+			for(siz i = 0; i < action.size(); ++i)
+				if(action[i] == '*')
+					if(!i || action[i - 1] != '\\')
+						action.replace(i, 1, nicks[rand_int(0, nicks.size() - 1)]);
+//			for(size_t pos = 0; (pos = action.find("*", pos)) != str::npos; ++pos)
+//				if(!(pos && action[pos - 1] == '\\'))
+//				{
+//					size_t n = rand_int(0, nicks.size() - 1);
+//					action.replace(pos, 1, nicks[n]);
+//					nicks.erase(nicks.begin() + n);
+//					if(nicks.empty())
+//						nicks.assign(bot.nicks[channel].cbegin(), bot.nicks[channel].cend());
+//				}
 
 		size_t pos = 0;
 		while((pos = action.find("\\*")) != str::npos)
 			action.replace(pos, 2, "*");
-		std::async(std::launch::async, [&,channel,action]
+		std::async(std::launch::async, [&,chan,action]
 		{
 			std::this_thread::sleep_for(std::chrono::seconds(rand_int(1, 8)));
-			irc->me(channel, action);
+			irc->me(chan, action);
 		});
 	}
 }
