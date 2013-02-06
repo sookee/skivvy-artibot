@@ -450,7 +450,7 @@ str ArtibotIrcBotPlugin::mh(const str& text)
 
 str ArtibotIrcBotPlugin::mh(const message& msg)
 {
-	str text = msg.get_user_params();
+	str text = msg.get_user_params_cp();
 	str word;
 	std::istringstream iss(text);
 	while(iss >> word)
@@ -460,7 +460,7 @@ str ArtibotIrcBotPlugin::mh(const message& msg)
 			if(bot.wild_match(match, word))
 			{
 				offender_mtx.lock();
-				++offender_map[msg.from];
+				++offender_map[msg.from_cp];
 
 				// Save offender map
 				std::ofstream ofs(bot.getf(OFFENDER_FILE, OFFENDER_FILE_DEFAULT));
@@ -469,12 +469,12 @@ str ArtibotIrcBotPlugin::mh(const message& msg)
 				ofs.close();
 				offender_mtx.unlock();
 
-				if(offender_map[msg.from] > 3)
+				if(offender_map[msg.from_cp] > 3)
 				{
-					log("Adding to ignores: " << msg.from);
-					offends.push_back(msg.from);
+					log("Adding to ignores: " << msg.from_cp);
+					offends.push_back(msg.from_cp);
 				}
-				log("Warning to: " << msg.from);
+				log("Warning to: " << msg.from_cp);
 				return random_excuse(word);
 			}
 	}
@@ -602,37 +602,37 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 {
 	BUG_COMMAND(msg);
 
-	if(msg.cmd != "PRIVMSG")
+	if(msg.cmd_cp != "PRIVMSG")
 		return;
 
 	for(const str& s: ignores)
-		if(msg.from.find(s) != str::npos)
+		if(msg.from_cp.find(s) != str::npos)
 			return;
 
-	str to = lowercase(msg.text);//get_user_cmd();
+	str to = lowercase(msg.text_cp);//get_user_cmd();
 	str nick = lowercase(bot.nick);
 	if(bot.get(RESPOND) == RESPOND_CASUAL ? to.find(nick) != str::npos : to.find(nick) == 0)
 	{
 		for(const str& s: offends)
-			if(msg.from.find(s) != str::npos)
+			if(msg.from_cp.find(s) != str::npos)
 			{
-				bot.fc_reply(msg, msg.get_nick() + ": I am not speaking to you today.");
+				bot.fc_reply(msg, msg.get_nick_cp() + ": I am not speaking to you today.");
 				return;
 			}
 
-		str response = msg.get_nick() + ": ";
+		str response = msg.get_nick_cp() + ": ";
 		if(bot.get(AI) == AI_MEGAHAL)
 			response += mh(msg);
 		else
-			response += ai(msg.get_user_params());
+			response += ai(msg.get_user_params_cp());
 		bot.fc_reply(msg, response);
 	}
 
-	if(msg.text.size() > 8 && msg.text.find("\001ACTION ") == 0)
+	if(msg.text_cp.size() > 8 && msg.text_cp.find("\001ACTION ") == 0)
 	{
 		bug_msg(msg);
 		std::string action;
-		extract_delimited_text(msg.text, "\001ACTION ", "\001", action);
+		extract_delimited_text(msg.text_cp, "\001ACTION ", "\001", action);
 		bug("ACTION DETECTED: " << action);
 
 		bool allow_action = true;
@@ -659,8 +659,8 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 		if(allow_action)
 		{
 			size_t pos = 0;
-			const str_set& nicks = bot.nicks[msg.params];
-			bug("msg.params: " << msg.params);
+			const str_set& nicks = bot.nicks[msg.params_cp];
+			bug("msg.params: " << msg.params_cp);
 
 			for(pos = 0; (pos = action.find("*", pos)) != str::npos; pos += 2)
 				action.replace(pos, 1, "\\*");
@@ -690,7 +690,7 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 		auto a = acts.begin();
 		std::advance(a, rand_int(0, acts.size() - 1));
 		if(a != acts.cend())
-			ai_random_acts(*a, msg.params); // to test
+			ai_random_acts(*a, msg.params_cp); // to test
 	}
 }
 
