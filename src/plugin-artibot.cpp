@@ -666,8 +666,23 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 		if(allow_action)
 		{
 			size_t pos = 0;
-			const str_set& nicks = bot.nicks[msg.get_chan()];
+
 			bug_var(msg.get_chan());
+			const str_set& botnicks = bot.nicks[msg.get_chan()];
+
+			// Sort nicks largest first to ensure whole nicks match
+			// rather than sub-nicks
+			struct gt
+			{
+				bool operator()(const str& s1, const str& s2)
+				{
+					if(s1.size() == s2.size())
+						return s1 < s2;
+					return s1.size() > s2.size();
+				}
+			};
+
+			std::set<str, gt> nicks(botnicks.begin(), botnicks.end());
 
 			for(pos = 0; (pos = action.find("*", pos)) != str::npos; pos += 2)
 				action.replace(pos, 1, "\\*");
@@ -690,7 +705,12 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 			return;
 
 		siz pc = bot.get(RANDOM_ACTS_TRIGER, RANDOM_ACTS_TRIGER_DEFAULT);
-		if(pc < siz(rand_int(0, 99)))
+		siz ri = siz(rand_int(0, 99));
+
+		bug_var(pc);
+		bug_var(ri);
+
+		if(pc <= ri)
 			return;
 
 		bug_var(acts.size());
@@ -712,24 +732,16 @@ void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& chan)
 	{
 		str_vec nicks(bot.nicks[chan].begin(), bot.nicks[chan].end());
 
-		if(!nicks.empty()) // TODO PM has no nicks what to  do abotu wildcards?
-			for(siz i = 0; i < action.size(); ++i)
-				if(action[i] == '*')
-					if(!i || action[i - 1] != '\\')
-						action.replace(i, 1, nicks[rand_int(0, nicks.size() - 1)]);
-//			for(size_t pos = 0; (pos = action.find("*", pos)) != str::npos; ++pos)
-//				if(!(pos && action[pos - 1] == '\\'))
-//				{
-//					size_t n = rand_int(0, nicks.size() - 1);
-//					action.replace(pos, 1, nicks[n]);
-//					nicks.erase(nicks.begin() + n);
-//					if(nicks.empty())
-//						nicks.assign(bot.nicks[channel].cbegin(), bot.nicks[channel].cend());
-//				}
-
-		size_t pos = 0;
-		while((pos = action.find("\\*")) != str::npos)
-			action.replace(pos, 2, "*");
+//		if(!nicks.empty()) // TODO PM has no nicks what to  do abotu wildcards?
+//			for(siz i = 0; i < action.size(); ++i)
+//				if(action[i] == '*')
+//					if(!i || action[i - 1] != '\\')
+//						action.replace(i, 1, nicks[rand_int(0, nicks.size() - 1)]);
+//
+//		size_t pos = 0;
+//		while((pos = action.find("\\*")) != str::npos)
+//			action.replace(pos, 2, "*");
+		action = wild_replace(action, nicks);
 		std::async(std::launch::async, [&,chan,action]
 		{
 			std::this_thread::sleep_for(std::chrono::seconds(rand_int(1, 8)));
