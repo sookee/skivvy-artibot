@@ -33,7 +33,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include "mh/megahal.h"
 
 #include <string>
-#include <fstream> // DEBUG:
+#include <fstream>
 #include <sstream>
 #include <algorithm>
 
