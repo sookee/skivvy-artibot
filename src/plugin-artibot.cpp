@@ -38,6 +38,8 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <algorithm>
 
 #include <thread>
+#include <array>
+#include <vector>
 
 #include <skivvy/logrep.h>
 #include <skivvy/stl.h>
@@ -70,6 +72,9 @@ const str RANDOM_ACTS_FILE = "artibot.random_acts_file";
 const str RANDOM_ACTS_FILE_DEFAULT = "artibot-random-acts.txt";
 const str RANDOM_ACTS_TRIGER = "artibot.random_acts_trigger";
 const siz RANDOM_ACTS_TRIGER_DEFAULT = 50;
+const str RA_DELAY = "artibot.random_acts_delay";
+const siz RA_DELAY_DEFAULT = 10; // seconds
+
 
 std::iostream& ArtibotIrcBotPlugin::post(std::iostream& io, const str& data)
 {
@@ -163,7 +168,7 @@ static str extract_reply_text(const str& html, const str& nick)
 		reply.replace(pos, 9, nick);
 
 	//bug("reply: " << reply);
-	return reply;
+	return trim(reply);
 }
 
 static std::istream& getsentence(std::istream& is, str& s)
@@ -726,28 +731,45 @@ void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& chan)
 	bug_func();
 	bug_var(action);
 	bug_var(chan);
-//	str_vec chans(bot.chans.cbegin(), bot.chans.cend());
+	str_vec nicks(bot.nicks[chan].begin(), bot.nicks[chan].end());
 
-//	if(!acts.empty()/* && rand_int(0, 1)*/)
+	action = wild_replace(action, nicks);
+
+	// gender
+
+	struct gender
 	{
-		str_vec nicks(bot.nicks[chan].begin(), bot.nicks[chan].end());
+		str m;
+		str f;
+		gender(const str& m, const str& f): m(m), f(f) {}
+	};
 
-//		if(!nicks.empty()) // TODO PM has no nicks what to  do abotu wildcards?
-//			for(siz i = 0; i < action.size(); ++i)
-//				if(action[i] == '*')
-//					if(!i || action[i - 1] != '\\')
-//						action.replace(i, 1, nicks[rand_int(0, nicks.size() - 1)]);
-//
-//		size_t pos = 0;
-//		while((pos = action.find("\\*")) != str::npos)
-//			action.replace(pos, 2, "*");
-		action = wild_replace(action, nicks);
-		std::async(std::launch::async, [&,chan,action]
-		{
-			std::this_thread::sleep_for(std::chrono::seconds(rand_int(1, 8)));
-			irc->me(chan, action);
-		});
+	// pronoun map
+	static const str_vec m = {"boy", "he", "his", "himself"};
+	static const str_vec f = {"girl", "she", "her", "herself"};
+
+	bool male = bot.get("artibot.gender", "male") != "female";
+
+	const str_vec& og = male ? f : m; // old gender
+	const str_vec& ng = male ? m : f; // new gender
+
+	str gaction, sep, word;
+	siss iss(action);
+	while(iss >> word)
+	{
+		for(siz i = 0; i < og.size(); ++i)
+			if(lowercase(word) == lowercase(og[i]))
+				word = ng[i];
+		gaction += sep + word;
+		sep = " ";
 	}
+	action = gaction;
+
+	std::async(std::launch::async, [&,chan,action]
+	{
+		std::this_thread::sleep_for(std::chrono::seconds(rand_int(1, bot.get(RA_DELAY, RA_DELAY_DEFAULT))));
+		irc->me(chan, action);
+	});
 }
 
 }} // sookee::artibot
