@@ -57,7 +57,6 @@ private:
 	// Session & form data
 	std::string formdata;
 	net::cookie_jar cookies;
-//	std::map<std::string, net::cookie> cookies;
 
 	str_vec banned_words;
 	str_siz_map offender_map;
@@ -71,9 +70,6 @@ private:
 	std::mutex offender_mtx;
 	std::mutex random_acts_mtx;
 
-	str read();
-	void reader();
-	void ai_read(const message& msg);
 	void ai_random_acts(str action, const str& channel);
 
 	std::string ai(const std::string& text);
