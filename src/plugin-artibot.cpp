@@ -47,7 +47,7 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 namespace skivvy { namespace artibot {
 
-PLUGIN_INFO("artibot", "Artibot AI", "0.1");
+PLUGIN_INFO("artibot", "Artibot AI", "1.0-beta");
 IRC_BOT_PLUGIN(ArtibotIrcBotPlugin);
 
 using namespace skivvy;
