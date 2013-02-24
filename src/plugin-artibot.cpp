@@ -30,8 +30,6 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 #include <skivvy/plugin-artibot.h>
 
-#include "mh/megahal.h"
-
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -171,195 +169,6 @@ static str extract_reply_text(const str& html, const str& nick)
 	return trim(reply);
 }
 
-static std::istream& getsentence(std::istream& is, str& s)
-{
-	static str const punct = ".?!";
-	s.clear();
-	char c;
-	while(is.get(c) && punct.find(c) == str::npos)
-	{
-		s += c;
-	}
-	if(is && std::ispunct(c)) s += c;
-	else s.clear();
-
-	// must begin with uppercase letter
-	if(!s.empty() && !std::isupper(s[0]))
-		s.clear();
-
-	// must not contain abbreviation
-//	static str_vec abbrs;
-//	if(abbrs.empty())
-//	{
-//		abbrs.push_back("Jr.");
-//		abbrs.push_back("Sr.");
-//	}
-//	for(const str& abbr: abbrs)
-//		if(!s.empty() && s.find(abbr) != str::npos)
-//			s.clear();
-
-
-	return is;
-}
-
-static str read_wikipedia(str_vec& v)
-{
-	str title;
-	net::socketstream ss;
-
-	str UA = "SkivvyBot/0.1 (+http://sookee.dyndns.org/skivvy) (mailto:oaskivvy@gmail.com)";
-
-	log("Request random title");
-
-	ss.open("en.wikipedia.org", 80);
-	ss << "HEAD /wiki/Special:Random HTTP/1.1\r\n";
-	ss << "Host: en.wikipedia.org\r\n";
-	ss << "User-Agent: " << UA << "\r\n";
-	ss << "Accept: */*\r\n";
-	ss << "\r\n" << std::flush;
-
-	net::header_map headers;
-	net::read_http_headers(ss, headers);
-	net::header_citer i = headers.find("location");
-
-	if(i != headers.cend() && i->second.size() > 29)
-	{
-		title = i->second.substr(29);
-		std::string params = "format=xml&action=query&redirects&titles=" + i->second.substr(29);
-
-		std::replace(title.begin(), title.end(), '_', ' ');
-
-		log("Request pageid.");
-
-		ss.open("en.wikipedia.org", 80);
-		ss << "GET /w/api.php?" << params << " HTTP/1.1\r\n";
-		ss << "Host: en.wikipedia.org\r\n";
-		ss << "User-Agent: " << UA << "\r\n";
-		ss << "Accept: */*\r\n";
-		ss << "\r\n" << std::flush;
-
-		headers.clear();
-		net::read_http_headers(ss, headers);
-
-		std::ostringstream oss;
-		for(char c; ss.get(c); oss.put(c));
-
-		str xml = oss.str();
-		str::size_type pos;
-		if((pos = xml.find("pageid=\"")) != str::npos && xml.size() > (pos + 8))
-		{
-			std::istringstream iss(xml.substr(pos + 8));
-			str pageid;
-			std::getline(iss, pageid, '"');
-
-			log("Request Page: " << pageid);
-
-			params = "action=parse&format=xml&prop=text&pageid=" + pageid;
-
-			ss.open("en.wikipedia.org", 80);
-			ss << "GET /w/api.php?" << params << " HTTP/1.1\r\n";
-			ss << "Host: en.wikipedia.org\r\n";
-			ss << "User-Agent: " << UA << "\r\n";
-			ss << "Accept: */*\r\n";
-			ss << "Accept-Language: en,en-us\r\n";
-			ss << "Accept-Charset: ISO-8859-1,utf-8\r\n";
-			ss << "Cache-Control: max-age=0\r\n";
-			ss << "\r\n" << std::flush;
-
-			headers.clear();
-			net::read_http_headers(ss, headers);
-
-			std::ostringstream oss;
-			for(char c; ss.get(c); oss.put(c));
-
-			str xml = oss.str();
-			str html = net::html_to_text(xml);
-
-			size_t pos = 0;
-			std::string p;
-			while((pos = extract_delimited_text(html, "<p>", "</p>", p, pos)) != str::npos)
-			{
-				std::cout << pos << '\n';
-				str line = net::html_to_text(p);
-
-				// now extract sentences
-				std::istringstream iss(line);
-				while(getsentence(iss, line))
-				{
-					//bug("AI: Sentence: " << line);
-					if(line.size() > 30 && line.size() < 100)
-					{
-						v.push_back(line);
-						bug("AI: Learning: " << line);
-					}
-				}
-			}
-		}
-	}
-	return title;
-}
-
-str ArtibotIrcBotPlugin::read()
-{
-	bug_func();
-	str title;
-	str_vec lines;
-	if(!(title = read_wikipedia(lines)).empty())
-		for(const str& line: lines)
-		{
-			bug("MH: Reading: " << line);
-			bug("Reply: " << mh(line));
-		}
-	return title;
-}
-
-void ArtibotIrcBotPlugin::ai_read(const message& msg)
-{
-	if(bot.get(AI) != AI_MEGAHAL)
-	{
-		bot.fc_reply(msg, "I don't like reading, please talk to me instead.");
-		return;
-	}
-	bot.fc_reply(msg, "I just read about " + read());
-}
-
-void ArtibotIrcBotPlugin::reader()
-{
-	size_t delay = bot.get(AUTOREAD, AUTOREAD_DEFAULT);
-//	std::istringstream iss(bot.get(AUTOREAD, AUTOREAD_DEFAULT));
-//	iss >> delay;
-
-	log("Artibot: Reading delay: " << (delay / 60) << " minutes");
-
-	size_t count;
-	while(!done)
-	{
-		log("READ WIKIPEDIA: " << read());
-		count = delay;
-		while(!done && --count != 0)
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-	}
-}
-
-//-----------------------------------------------------
-//Artibot AI: ai()
-//-----------------------------------------------------
-//text: you tierd Skivvy
-//say: botcust2=f73f2fe40be32f19&message=you%20tierd%20Skivvy
-//c: botcust2 = f73f2fe40be32f19
-//Cookie: Cookie: botcust2=f73f2fe40be32f19
-//2012-01-21 16:40:30: BAD RESPONSE:
-//2012-01-21 16:40:30: ERROR reading headers.
-
-//text: I care about robots that make sense!!!!!!!!!!!!!!!!!
-//say: botcust2=d36167980bec7543&message=I%20care%20about%20robots%20that%20make%20sense%21%21%21%21%21%21%21%21%21%21%21%21%21%21%21%21%21
-//c: botcust2 = d36167980bec7543
-//Cookie: Cookie: botcust2=d36167980bec7543
-//2012-01-22 11:13:41: STREAM ERROR:
-//2012-01-22 11:13:41:           is: 0
-//2012-01-22 11:13:41: ERROR reading headers.
-
-
 str ArtibotIrcBotPlugin::ai(const str& text)
 {
 	bug("-----------------------------------------------------");
@@ -412,82 +221,6 @@ str ArtibotIrcBotPlugin::ai(const str& text)
 	return extract_reply_text(html, bot.nick);
 }
 
-static std::string random_excuse(const str& word)
-{
-	static const str_vec excuses =
-	{
-		"Don't you think that * is not a very nice word?"
-		, "Please be more polite."
-		, "I won't answer if you are going to use bad words."
-		, "Maybe you should wash your mouth out with soap?"
-		, "I would prefer that you talked nicely if you don't mind."
-		, "You shouldn't be using words like that."
-		, "Mind your language please!"
-		, "Would your mother let you use words like that?"
-		, "If you talk to me nicely then I might reply."
-	};
-
-	str excuse = excuses[rand_int(0, excuses.size() - 1)];
-	str::size_type pos;
-	while((pos = excuse.find("*")) != str::npos)
-		excuse.replace(pos, 1, word);
-
-	return excuse;
-}
-
-str ArtibotIrcBotPlugin::mh(const str& text)
-{
-	bug("-----------------------------------------------------");
-	bug(get_name() << ": mh()");
-	bug("text: " << text);
-	bug("-----------------------------------------------------");
-
-	static size_t count = 0; // for regular brain saving
-
-	if(!(++count % 10)) mh::megahal_cleanup();
-
-	std::ostringstream oss;
-	char* reply = mh::megahal_do_reply(text.c_str(), 0);
-	mh::megahal_output(reply, oss);
-
-	return oss.str();
-}
-
-str ArtibotIrcBotPlugin::mh(const message& msg)
-{
-	str text = msg.get_user_params();
-	str word;
-	std::istringstream iss(text);
-	str userhost = msg.get_userhost();
-	while(iss >> word)
-	{
-		bug("CHECK WORD: " << word);
-		for(const str& match: banned_words)
-			if(bot.wild_match(match, word))
-			{
-				offender_mtx.lock();
-				bug_var(userhost);
-				++offender_map[userhost];
-
-				// Save offender map
-				std::ofstream ofs(bot.getf(OFFENDER_FILE, OFFENDER_FILE_DEFAULT));
-				for(const str_siz_pair& p: offender_map)
-					ofs << p.first << '\n' << p.second << '\n';
-				ofs.close();
-				offender_mtx.unlock();
-
-				if(offender_map[userhost] > 3)
-				{
-					log("Adding to ignores: " << userhost);
-					offends.push_back(userhost);
-				}
-				log("Warning to: " << userhost);
-				return random_excuse(word);
-			}
-	}
-	return mh(text);
-}
-
 ArtibotIrcBotPlugin::ArtibotIrcBotPlugin(IrcBot& bot)
 : BasicIrcBotPlugin(bot), done(false)
 {
@@ -513,69 +246,41 @@ bool ArtibotIrcBotPlugin::initialize()
 			offends.push_back(user);
 	}
 
-	if(bot.get(AI) == AI_MEGAHAL)
+	log("Initializing PANDORA");
+	net::socketstream io;
+	io.open("www.pandorabots.com", 80);
+
+	if(!get(io))
 	{
-		log("Initializing MegaHAL");
-		mh::megahal_setnoprompt();
-		mh::megahal_setnowrap();
-		mh::megahal_setdirectory(const_cast<char*>("."));
-		mh::megahal_setnobanner();
-		mh::megahal_initialize();
-
-		str word;
-		std::ifstream ifs(bot.getf(BANNED_WORD_FILE, BANNED_WORD_FILE_DEFAULT));
-		while(std::getline(ifs, word) && !trim(word).empty())
-			banned_words.push_back(word);
-		log("There are " << banned_words.size() << " banned words");
+		log("ERROR getting data.");
+		return true;
 	}
-	else
+
+	net::header_map headers;
+	if(!net::read_http_headers(io, headers))
 	{
-		log("Initializing PANDORA");
-		net::socketstream io;
-		io.open("www.pandorabots.com", 80);
-
-		if(!get(io))
-		{
-			log("ERROR getting data.");
-			return true;
-		}
-
-		net::header_map headers;
-		if(!net::read_http_headers(io, headers))
-		{
-			log("ERROR reading headers.");
-			return true;
-		}
-
-		cookies.clear();
-		if(!net::read_http_cookies(io, headers, cookies))
-		{
-			log("ERROR reading cookies.");
-			return true;
-		}
-
-		str html;
-		if(!net::read_http_response_data(io, headers, html))
-		{
-			log("ERROR reading response data.");
-			return true;
-		}
-
-		formdata = extract_form_data(html);
+		log("ERROR reading headers.");
+		return true;
 	}
+
+	cookies.clear();
+	if(!net::read_http_cookies(io, headers, cookies))
+	{
+		log("ERROR reading cookies.");
+		return true;
+	}
+
+	str html;
+	if(!net::read_http_response_data(io, headers, html))
+	{
+		log("ERROR reading response data.");
+		return true;
+	}
+
+	formdata = extract_form_data(html);
 
 	bot.add_monitor(*this);
 
-// TODO: Fix autoreading
-//	if(bot.get(AI) == AI_MEGAHAL && !bot.get(AUTOREAD).empty())
-//		reader_func = std::async(std::launch::async, [&]{ reader(); });
-//
-//	add
-//	(action(
-//		"!ai_read"
-//		, "!ai_read Tell the AI to go read a random page from Wikipedia."
-//		, [&](const message& msg){ ai_read(msg); }
-//	));
 	return true;
 }
 
@@ -597,9 +302,6 @@ void ArtibotIrcBotPlugin::exit()
 		ofs << p.first << '\n' << p.second << '\n';
 	ofs.close();
 
-	bug("Megahal cleanup.");
-	if(bot.get(AI) == AI_MEGAHAL)
-		mh::megahal_cleanup();
 	bug("Wait on thread death.");
 	if(reader_func.valid())
 		if(reader_func.wait_for(std::chrono::seconds(10)) == std::future_status::ready)
@@ -632,11 +334,7 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 				return;
 			}
 
-		str response = msg.get_nickname() + ": ";
-		if(bot.get(AI) == AI_MEGAHAL)
-			response += mh(msg);
-		else
-			response += ai(msg.get_user_params());
+		str response = msg.get_nickname() + ": " + ai(msg.get_user_params());
 		bot.fc_reply(msg, response);
 	}
 

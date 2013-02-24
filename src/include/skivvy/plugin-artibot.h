@@ -77,8 +77,6 @@ private:
 	void ai_random_acts(str action, const str& channel);
 
 	std::string ai(const std::string& text);
-	std::string mh(const str& text);
-	std::string mh(const message& msg);
 
 public:
 	ArtibotIrcBotPlugin(IrcBot& bot);
