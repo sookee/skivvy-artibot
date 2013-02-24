@@ -1,0 +1,17 @@
+artibot.id: 9400cc047e36a720
+artibot.form.pcre: <input type="HIDDEN" name="([^"]*)"
+artibot.reply.pcre: <b>9jawap robot:</b>([^<]*)<
+artibot.name: 9jawap Chatbuddie
+artibot.name: Chat girl
+
+artibot.gender: female
+artibot.respond: direct
+artibot.ignore: Hit|er
+artibot.ignore: Hoagie
+artibot.ignore: Dr_Hoagie
+artibot.ignore: Dr_Remmiz
+artibot.banned_word_file: airtibot-banned-words.txt
+
+artibot.random_acts_file: artibot-random-acts.txt
+artibot.random_acts_trigger: 20 // 20%
+artibot.offender_file: artibot-offenders.txt

@@ -43,6 +43,8 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <skivvy/stl.h>
 #include <skivvy/str.h>
 
+#include <pcrecpp.h>
+
 namespace skivvy { namespace artibot {
 
 PLUGIN_INFO("artibot", "Artibot AI", "0.1");
@@ -53,6 +55,7 @@ using namespace skivvy::types;
 using namespace skivvy::utils;
 using namespace skivvy::ircbot;
 using namespace skivvy::string;
+using namespace pcrecpp;
 
 const str AI = "artibot.ai";
 const str AI_MEGAHAL = "megahal";
@@ -73,6 +76,10 @@ const siz RANDOM_ACTS_TRIGER_DEFAULT = 50;
 const str RA_DELAY = "artibot.random_acts_delay";
 const siz RA_DELAY_DEFAULT = 10; // seconds
 
+const str PANDORA_ID = "artibot.id";
+const str PANDORA_FORM_PCRE = "artibot.form.pcre";
+const str PANDORA_REPLY_PCRE = "artibot.reply.pcre";
+const str PANDORA_NAME = "artibot.name";
 
 std::iostream& ArtibotIrcBotPlugin::post(std::iostream& io, const str& data)
 {
@@ -82,12 +89,14 @@ std::iostream& ArtibotIrcBotPlugin::post(std::iostream& io, const str& data)
 	}
 	bug("Cookie: " << net::get_cookie_header(cookies, ".pandorabots.com"));
 
-	io << "POST /pandora/talk?botid=9400cc047e36a720 HTTP/1.1\r\n";
+	str id = bot.get(PANDORA_ID);
+
+	io << "POST /pandora/talk?botid=" + id + " HTTP/1.1\r\n";
 	io << "Host: www.pandorabots.com\r\n";
 	io << "User-Agent: " << bot.get_name() << " v" << bot.get_version() << " " << bot.nick << "\r\n";
 	io << "Accept: */*\r\n";
 	io << "Connection: keep-alive\r\n";
-	io << "Referer: http://www.pandorabots.com/pandora/talk?botid=9400cc047e36a720\r\n";
+	io << "Referer: http://www.pandorabots.com/pandora/talk?botid=" + id + "\r\n";
 
 	io << net::get_cookie_header(cookies, ".pandorabots.com") << "\r\n";
 
@@ -101,7 +110,9 @@ std::iostream& ArtibotIrcBotPlugin::post(std::iostream& io, const str& data)
 
 std::iostream& ArtibotIrcBotPlugin::get(std::iostream& io)
 {
-	io << "GET /pandora/talk?botid=9400cc047e36a720 HTTP/1.1\r\n";
+	str id = bot.get(PANDORA_ID);
+
+	io << "GET /pandora/talk?botid=" + id + " HTTP/1.1\r\n";
 	io << "Host: www.pandorabots.com\r\n";
 	io << "User-Agent: " << bot.get_name() << " v" << bot.get_version() << " " << bot.nick << "\r\n";
 	io << "Accept: */*\r\n";
@@ -111,63 +122,32 @@ std::iostream& ArtibotIrcBotPlugin::get(std::iostream& io)
 	return io;
 }
 
-// TODO use logrep's extract_delimited_text instead of this
-std::string extract_form_data(const str& html)
-{
-	str formdata;
+//std::string extract_form_data(const str& html)
+//{
+//	str formdata;
+//
+//	RE(R"x(<input type="HIDDEN" name="([^"]*)")x").PartialMatch(html, &formdata);
+//
+//	return formdata;
+//}
 
-	str::size_type pos = 0;
-	str::size_type end = 0;
-	static const str::size_type npos = str::npos;
-	str bdelim = R"(<input type="HIDDEN" name=")";
-	str edelim = R"(")";
-
-	if((pos = html.find(bdelim, 0)) != npos
-	&& (end = html.find(edelim, (pos = pos + bdelim.size()))) != npos)
-	{
-		formdata = html.substr(pos, end - pos);
-
-		bdelim = R"(value=")";
-		edelim = R"(")";
-
-		if((pos = html.find(bdelim, end)) != npos
-		&& (end = html.find(edelim, (pos = pos + bdelim.size()))) != npos)
-			formdata += "=" + html.substr(pos, end - pos);
-	}
-
-	//bug("formdata: " << formdata);
-	return formdata;
-}
-
-
-static str extract_reply_text(const str& html, const str& nick)
-{
-	str reply;
-
-	str::size_type pos = 0;
-	str::size_type end = 0;
-	static const str::size_type npos = str::npos;
-
-	str bdelim = R"(<b>9jawap robot:</b>)";
-	str edelim = R"(<br>)";
-
-	if((pos = html.find(bdelim, 0)) != npos
-	&& (end = html.find(edelim, (pos = pos + bdelim.size()))) != npos)
-	{
-		reply = html.substr(pos, end - pos);
-	}
-
-	pos = reply.find("9jawap Chatbuddie");
-	if(pos != str::npos)
-		reply.replace(pos, 17, nick);
-
-	pos = reply.find("Chat girl");
-	if(pos != str::npos)
-		reply.replace(pos, 9, nick);
-
-	//bug("reply: " << reply);
-	return trim(reply);
-}
+//static str extract_reply_text(const str& html, const str& nick)
+//{
+//	str reply;
+//
+//	RE(R"x(<b>9jawap robot:</b>([^<]*)<)x").PartialMatch(html, &reply);
+//
+//	siz pos = reply.find("9jawap Chatbuddie");
+//	if(pos != str::npos)
+//		reply.replace(pos, 17, nick);
+//
+//	pos = reply.find("Chat girl");
+//	if(pos != str::npos)
+//		reply.replace(pos, 9, nick);
+//
+//	//bug("reply: " << reply);
+//	return trim(reply);
+//}
 
 str ArtibotIrcBotPlugin::ai(const str& text)
 {
@@ -180,10 +160,10 @@ str ArtibotIrcBotPlugin::ai(const str& text)
 	size_t pos = test.find(lowercase(bot.nick));
 	test = text;
 	if(pos != str::npos)
-		test.replace(pos, bot.nick.size(), "9jawap Chatbuddie");
+		test.replace(pos, bot.nick.size(), bot.get(PANDORA_NAME));
 
 	str say = formdata + "&message=" + net::urlencode(test);
-	bug("say: " << say);
+	bug_var(say);
 
 	net::socketstream io;
 	io.open("www.pandorabots.com", 80);
@@ -216,9 +196,28 @@ str ArtibotIrcBotPlugin::ai(const str& text)
 	}
 
 	// Form data
-	formdata = extract_form_data(html);
+//	formdata = extract_form_data(html);
+	str data = html;
+	for(const str& pcre: bot.get_vec(PANDORA_FORM_PCRE))
+		RE(pcre).PartialMatch(data, &data);
+	formdata = data;
 
-	return extract_reply_text(html, bot.nick);
+	data = html;
+	for(const str& pcre: bot.get_vec(PANDORA_REPLY_PCRE))
+		RE(pcre).PartialMatch(data, &data);
+
+	str reply = data;
+
+	for(const str& name: bot.get_vec(PANDORA_NAME))
+	{
+		siz pos = reply.find(name);
+		if(pos != str::npos)
+			reply.replace(pos, name.size(), bot.nick);
+	}
+
+	trim(reply);
+
+	return reply;
 }
 
 ArtibotIrcBotPlugin::ArtibotIrcBotPlugin(IrcBot& bot)
@@ -277,7 +276,10 @@ bool ArtibotIrcBotPlugin::initialize()
 		return true;
 	}
 
-	formdata = extract_form_data(html);
+	str data = html;
+	for(const str& pcre: bot.get_vec(PANDORA_FORM_PCRE))
+		RE(pcre).PartialMatch(data, &data);
+	formdata = data;
 
 	bot.add_monitor(*this);
 
