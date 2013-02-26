@@ -39,11 +39,12 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <array>
 #include <vector>
 
+#include <sookee/str.h>
+
 #include <skivvy/network.h>
 #include <skivvy/logrep.h>
 #include <skivvy/utils.h>
 #include <skivvy/stl.h>
-#include <skivvy/str.h>
 
 #include <pcrecpp.h>
 
@@ -56,7 +57,7 @@ using namespace skivvy;
 using namespace skivvy::types;
 using namespace skivvy::utils;
 using namespace skivvy::ircbot;
-using namespace skivvy::string;
+using namespace sookee::string;
 using namespace pcrecpp;
 
 const str AI = "artibot.ai";
@@ -158,8 +159,8 @@ str ArtibotIrcBotPlugin::ai(const str& text)
 	bug("-----------------------------------------------------");
 	bug("text: " << text);
 
-	str test = lowercase(text);
-	size_t pos = test.find(lowercase(bot.nick));
+	str test = lower_copy(text);
+	size_t pos = test.find(lower_copy(bot.nick));
 	test = text;
 	if(pos != str::npos)
 		test.replace(pos, bot.nick.size(), bot.get(PANDORA_NAME));
@@ -327,8 +328,8 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 
 	str text = msg.get_trailing();
 
-	str to = lowercase(text);//get_user_cmd();
-	str nick = lowercase(bot.nick);
+	str to = lower_copy(text);//get_user_cmd();
+	str nick = lower_copy(bot.nick);
 	if(bot.get(RESPOND) == RESPOND_CASUAL ? to.find(nick) != str::npos : to.find(nick) == 0)
 	{
 		for(const str& s: offends)
@@ -460,7 +461,7 @@ void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& chan)
 	while(iss >> word)
 	{
 		for(siz i = 0; i < og.size(); ++i)
-			if(lowercase(word) == lowercase(og[i]))
+			if(lower_copy(word) == lower_copy(og[i]))
 				word = ng[i];
 		gaction += sep + word;
 		sep = " ";
