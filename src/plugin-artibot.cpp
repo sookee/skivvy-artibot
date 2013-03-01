@@ -125,32 +125,12 @@ std::iostream& ArtibotIrcBotPlugin::get(std::iostream& io)
 	return io;
 }
 
-//std::string extract_form_data(const str& html)
-//{
-//	str formdata;
-//
-//	RE(R"x(<input type="HIDDEN" name="([^"]*)")x").PartialMatch(html, &formdata);
-//
-//	return formdata;
-//}
-
-//static str extract_reply_text(const str& html, const str& nick)
-//{
-//	str reply;
-//
-//	RE(R"x(<b>9jawap robot:</b>([^<]*)<)x").PartialMatch(html, &reply);
-//
-//	siz pos = reply.find("9jawap Chatbuddie");
-//	if(pos != str::npos)
-//		reply.replace(pos, 17, nick);
-//
-//	pos = reply.find("Chat girl");
-//	if(pos != str::npos)
-//		reply.replace(pos, 9, nick);
-//
-//	//bug("reply: " << reply);
-//	return trim(reply);
-//}
+str log_report(const str& msg)
+{
+	if(!msg.empty())
+		log(msg);
+	return "";
+}
 
 str ArtibotIrcBotPlugin::ai(const str& text)
 {
@@ -198,16 +178,30 @@ str ArtibotIrcBotPlugin::ai(const str& text)
 		return "I wish I knew how to respond.";
 	}
 
-	// Form data
-//	formdata = extract_form_data(html);
+	if(bot.has("artibot.dump.file"))
+	{
+		sofs ofs(bot.getf("artibot.dump.file"));
+		ofs << html;
+	}
+
+	RE re("");
+	RE_Options ops;
+	ops.set_dotall(true);
+	ops.set_caseless(true);
+
 	str data = html;
 	for(const str& pcre: bot.get_vec(PANDORA_FORM_PCRE))
-		RE(pcre).PartialMatch(data, &data);
+		if(!(re = RE(pcre, ops)).PartialMatch(data, &data))
+			return log_report(re.error());
+	trim(data);
+
 	formdata = data;
 
 	data = html;
 	for(const str& pcre: bot.get_vec(PANDORA_REPLY_PCRE))
-		RE(pcre).PartialMatch(data, &data);
+		if(!(re = RE(pcre, ops)).PartialMatch(data, &data))
+			return log_report(re.error());
+	trim(data);
 
 	str reply = data;
 
