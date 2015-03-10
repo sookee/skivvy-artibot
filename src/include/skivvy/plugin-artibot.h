@@ -39,9 +39,13 @@ http://www.gnu.org/licenses/gpl-2.0.html
 #include <mutex>
 #include <future>
 
+#include <sookee/types/basic.h>
+#include <sookee/types/map.h>
+
 namespace skivvy { namespace artibot {
 
 using namespace skivvy::ircbot;
+using namespace sookee::types;
 
 class ArtibotIrcBotPlugin
 : public BasicIrcBotPlugin
@@ -58,6 +62,8 @@ private:
 	std::string formdata;
 	net::cookie_jar cookies;
 //	std::map<std::string, net::cookie> cookies;
+
+	USING_MAP(str, siz, str_siz_map);
 
 	str_vec banned_words;
 	str_siz_map offender_map;

@@ -43,18 +43,20 @@ http://www.gnu.org/licenses/gpl-2.0.html
 
 #include <skivvy/logrep.h>
 #include <skivvy/stl.h>
-#include <skivvy/str.h>
+#include <skivvy/utils.h>
+#include <sookee/str.h>
 
 namespace skivvy { namespace artibot {
 
-PLUGIN_INFO("artibot", "Artibot AI", "0.1");
 IRC_BOT_PLUGIN(ArtibotIrcBotPlugin);
+PLUGIN_INFO("artibot", "Artibot AI", "0.1");
 
 using namespace skivvy;
-using namespace skivvy::types;
+using namespace sookee::types;
 using namespace skivvy::utils;
 using namespace skivvy::ircbot;
-using namespace skivvy::string;
+//using namespace skivvy::string;
+using namespace sookee::utils;
 
 const str AI = "artibot.ai";
 const str AI_MEGAHAL = "megahal";
@@ -74,7 +76,6 @@ const str RANDOM_ACTS_TRIGER = "artibot.random_acts_trigger";
 const siz RANDOM_ACTS_TRIGER_DEFAULT = 50;
 const str RA_DELAY = "artibot.random_acts_delay";
 const siz RA_DELAY_DEFAULT = 10; // seconds
-
 
 std::iostream& ArtibotIrcBotPlugin::post(std::iostream& io, const str& data)
 {
@@ -140,7 +141,6 @@ std::string extract_form_data(const str& html)
 	//bug("formdata: " << formdata);
 	return formdata;
 }
-
 
 static str extract_reply_text(const str& html, const str& nick)
 {
@@ -367,8 +367,8 @@ str ArtibotIrcBotPlugin::ai(const str& text)
 	bug("-----------------------------------------------------");
 	bug("text: " << text);
 
-	str test = lowercase(text);
-	size_t pos = test.find(lowercase(bot.nick));
+	str test = lower_copy(text);
+	size_t pos = test.find(lower_copy(bot.nick));
 	test = text;
 	if(pos != str::npos)
 		test.replace(pos, bot.nick.size(), "9jawap Chatbuddie");
@@ -471,7 +471,7 @@ str ArtibotIrcBotPlugin::mh(const message& msg)
 
 				// Save offender map
 				std::ofstream ofs(bot.getf(OFFENDER_FILE, OFFENDER_FILE_DEFAULT));
-				for(const str_siz_pair& p: offender_map)
+				for(const auto& p: offender_map)
 					ofs << p.first << '\n' << p.second << '\n';
 				ofs.close();
 				offender_mtx.unlock();
@@ -593,7 +593,7 @@ void ArtibotIrcBotPlugin::exit()
 	// Save banned word offenders
 	bug("Saving banned word offenders.");
 	std::ofstream ofs(bot.getf(OFFENDER_FILE, OFFENDER_FILE_DEFAULT));
-	for(const str_siz_pair& p: offender_map)
+	for(const auto& p: offender_map)
 		ofs << p.first << '\n' << p.second << '\n';
 	ofs.close();
 
@@ -621,8 +621,8 @@ void ArtibotIrcBotPlugin::event(const message& msg)
 
 	str text = msg.get_trailing();
 
-	str to = lowercase(text);//get_user_cmd();
-	str nick = lowercase(bot.nick);
+	str to = lower_copy(text);//get_user_cmd();
+	str nick = lower_copy(bot.nick);
 	if(bot.get(RESPOND) == RESPOND_CASUAL ? to.find(nick) != str::npos : to.find(nick) == 0)
 	{
 		for(const str& s: offends)
@@ -758,7 +758,7 @@ void ArtibotIrcBotPlugin::ai_random_acts(str action, const str& chan)
 	while(iss >> word)
 	{
 		for(siz i = 0; i < og.size(); ++i)
-			if(lowercase(word) == lowercase(og[i]))
+			if(lower_copy(word) == lower_copy(og[i]))
 				word = ng[i];
 		gaction += sep + word;
 		sep = " ";
