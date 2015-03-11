@@ -2,22 +2,18 @@
 
 top_dir=$(pwd)
 
-DEV_HOME=$HOME/dev
+PREFIX=$HOME/dev
+LIBDIR=$PREFIX/lib
 
-export CXX=g++
-#export CXX=clang++
+export PKG_CONFIG_PATH=$LIBDIR/pkgconfig
 
-CXXFLAGS="$CXXFLAGS -D DEBUG"
-CXXFLAGS="$CXXFLAGS -fno-inline"
-CXXFLAGS="$CXXFLAGS -fno-eliminate-unused-debug-types"
-CXXFLAGS="$CXXFLAGS -g3"
-CXXFLAGS="$CXXFLAGS -O0"
-export CXXFLAGS
+export CXXFLAGS =-g3 -O0 -D DEBUG
 
-#rm -fr $top_dir/install
 rm -fr $top_dir/build-debug
 mkdir -p $top_dir/build-debug
-cd $top_dir/build-debug
 
-$top_dir/configure --prefix=$DEV_HOME
+cd $top_dir/build-debug
+$top_dir/configure --prefix=$PREFIX
+
+
 
