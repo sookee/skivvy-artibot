@@ -307,6 +307,7 @@ str ArtibotIrcBotPlugin::read()
 	if(!(title = read_wikipedia(lines)).empty())
 		for(const str& line: lines)
 		{
+			(void) line;
 			bug("MH: Reading: " << line);
 			bug("Reply: " << mh(line));
 		}

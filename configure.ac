@@ -25,7 +25,7 @@ AC_INIT([skivvy-artibot],[0.1],[oaskivvy@gmail.com],[skivvy-artibot])
 AC_CONFIG_SRCDIR([src/plugin-artibot.cpp])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.10 foreign])
+AM_INIT_AUTOMAKE([1.10 foreign subdir-objects])
 
 AM_DISABLE_STATIC
 AM_PROG_LIBTOOL
